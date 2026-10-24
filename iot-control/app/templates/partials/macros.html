@@ -1,0 +1,4 @@
+{# Shared template helpers. Import with: {% from "partials/macros.html" import icon %} #}
+{% macro icon(name, cls='') -%}
+<svg class="i{% if cls %} {{ cls }}{% endif %}" aria-hidden="true"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}

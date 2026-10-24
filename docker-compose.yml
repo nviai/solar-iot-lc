@@ -1,0 +1,46 @@
+# Two independent services. iot-control reads live power from solar-monitor's
+# public API over the compose network; neither shares code or storage.
+services:
+  solar-monitor:
+    build: ./solar-monitor
+    image: solar-monitor
+    container_name: solar-monitor
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./solar-monitor/.env
+    volumes:
+      # Named volume (not a bind mount): SQLite WAL needs real shared-memory
+      # semantics, which macOS/virtiofs bind mounts don't provide reliably.
+      # Keeps the name the single-app deployment used, so history carries over.
+      - solax-data:/app/data
+
+  iot-control:
+    build: ./iot-control
+    image: iot-control
+    container_name: iot-control
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    env_file:
+      - ./iot-control/.env
+    environment:
+      # Server-to-server address; the browser link comes from SOLAR_PUBLIC_URL.
+      SOLAR_API_URL: http://solar-monitor:8000
+      # The inventory lives in the data volume rather than a bind mount, which
+      # Docker Desktop cannot serve from every drive. Copy it in once with:
+      #   docker compose cp iot-control/devices.json iot-control:/app/data/devices.json
+      #   docker compose restart iot-control
+      DEVICES_FILE: /app/data/devices.json
+    volumes:
+      - iot-data:/app/data
+    depends_on:
+      solar-monitor:
+        condition: service_healthy
+
+volumes:
+  solax-data:
+    name: solax-data
+  iot-data:
+    name: iot-data

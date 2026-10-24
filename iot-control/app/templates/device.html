@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% from "partials/garage.html" import stage, dial %}
+{% block title %}{{ device.name }}{% endblock %}
+
+{% macro number_field(id, label, unit, step, min, max) -%}
+<div class="field">
+  <label for="{{ id }}">{{ label }}</label>
+  <div class="input-group">
+    <input type="number" id="{{ id }}" step="{{ step }}" min="{{ min }}" {% if max %}max="{{ max }}"{% endif %} required>
+    <span class="input-group__unit">{{ unit }}</span>
+  </div>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header" data-device-id="{{ device.id }}" id="device-root">
+  <div>
+    <h1>{{ device.name }}</h1>
+    <p>{% if device.description %}{{ device.description }} · {% endif %}<code>{{ device.device_id }}</code>
+       · {{ device.ip }} · protocol {{ device.protocol }} · DP {{ device.dp }}</p>
+  </div>
+  <div class="toolbar">
+    <span class="badge" id="link-badge" data-tone="idle">Checking</span>
+    <button type="button" class="btn" id="btn-recheck" {% if not device.available %}disabled{% endif %}>{{ icon('refresh') }}Re-check now</button>
+  </div>
+</div>
+
+{% if not device.available %}
+<div class="callout" data-tone="warn" style="margin-bottom:1.25rem">
+  {{ icon('alert') }}
+  <div>
+    <h3>This device cannot be driven</h3>
+    <p>{{ device.reason }} Install the dependencies with
+       <code>pip install -r requirements.txt</code> and restart.</p>
+  </div>
+</div>
+{% endif %}
+
+<section class="card garage garage--detail" id="garage" data-garage data-state="unknown" data-mode="idle" aria-labelledby="relay-title">
+  <div class="garage__scene">
+    {{ stage('rear') }}
+    <div class="garage__hud">
+      <div class="hud-stat"><span>Solar now</span><strong id="hud-pv" data-live>—</strong></div>
+      <div class="hud-stat"><span>Mode</span><strong id="hud-mode">—</strong></div>
+    </div>
+  </div>
+
+  <div class="relay-panel">
+    <h2 class="visually-hidden" id="relay-title">Switch</h2>
+    <div class="relay" id="relay" data-state="unknown">
+      <div class="relay__orb"><span class="relay__ring"></span>{{ icon('power') }}</div>
+      <div class="relay__value" id="relay-value" data-live>Unknown</div>
+      <div class="relay__meta" id="relay-meta">Reading the switch…</div>
+    </div>
+
+    <div class="relay__actions">
+      <button type="button" class="btn btn--primary" id="btn-on" disabled>{{ icon('power') }}Start charging</button>
+      <button type="button" class="btn" id="btn-off" disabled>Stop</button>
+    </div>
+    <p class="relay__hint">Pressing a button stands automation down for a while.</p>
+
+    <div class="callout" data-tone="warn" id="override-banner" style="margin-top:1rem" hidden>
+      {{ icon('user') }}
+      <div>
+        <h3>Manual override</h3>
+        <p id="override-text"></p>
+        <div class="row" style="margin-top:.6rem">
+          <button type="button" class="btn btn--sm" id="btn-clear-override">Hand back to automation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="garage__dial">
+    {{ dial('device-dial') }}
+    <ul class="dial-legend">
+      <li data-tone="sun"><span class="dot"></span>Solar window</li>
+      <li data-tone="night"><span class="dot"></span>Off-peak</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card automation" style="margin-top:1.25rem" aria-labelledby="auto-title">
+  <div class="card__head">
+    <div>
+      <h2 class="card__title" id="auto-title">Automatic mode</h2>
+      <p class="card__sub">Solar by day, off-peak by night. Where the windows overlap, off-peak wins.
+        Nothing here applies while the master switch is off.</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="auto-enabled">
+      <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+      <span class="switch__label" id="auto-label">Off</span>
+    </label>
+  </div>
+
+  <div class="statusbar" id="auto-status" data-active="no">
+    <div class="statusbar__item">
+      <span class="statusbar__label">Solar now</span>
+      <strong id="stat-pv" data-live>—</strong>
+    </div>
+    <div class="statusbar__item">
+      <span class="statusbar__label">Local time</span>
+      <strong id="stat-time">—</strong>
+    </div>
+    <div class="statusbar__item">
+      <span class="statusbar__label">Active mode</span>
+      <strong id="stat-mode">—</strong>
+    </div>
+    <div class="statusbar__item">
+      <span class="statusbar__label">Next change</span>
+      <strong id="stat-next">—</strong>
+    </div>
+    <div class="statusbar__item statusbar__item--wide">
+      <span class="statusbar__label">Decision</span>
+      <strong id="stat-reason">—</strong>
+    </div>
+  </div>
+
+  <form id="auto-form" novalidate>
+    <div class="modes">
+      <fieldset class="mode-panel mode-panel--solar" id="panel-solar">
+        <legend class="visually-hidden">Solar mode</legend>
+        <div class="mode-panel__head">
+          <span class="mode-panel__icon">{{ icon('sun') }}</span>
+          <div>
+            <h3>Solar mode <small>Day</small></h3>
+            <p>On above one threshold, off below another — only inside the solar window.</p>
+          </div>
+          <label class="switch" style="--tone: var(--s-pv)">
+            <input type="checkbox" id="f-solar">
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="visually-hidden">Solar mode</span>
+          </label>
+        </div>
+        <div class="grid grid--form">
+          {{ number_field('f-on', 'Switch on at', 'kW', '0.1', '0', '') }}
+          {{ number_field('f-off', 'Switch off below', 'kW', '0.1', '0', '') }}
+          <div class="field">
+            <label for="f-start">Window opens</label>
+            <input type="time" id="f-start" required>
+          </div>
+          <div class="field">
+            <label for="f-end">Window closes</label>
+            <input type="time" id="f-end" required>
+          </div>
+        </div>
+        <label class="checkline" style="margin-top:1rem">
+          <input type="checkbox" id="f-off-outside">
+          <span>Switch off when the solar window closes, even if solar is still strong</span>
+        </label>
+      </fieldset>
+
+      <fieldset class="mode-panel mode-panel--offpeak" id="panel-offpeak">
+        <legend class="visually-hidden">Off-peak mode</legend>
+        <div class="mode-panel__head">
+          <span class="mode-panel__icon">{{ icon('moon') }}</span>
+          <div>
+            <h3>Off-peak mode <small>Night</small></h3>
+            <p>On the moment the cheap-rate window opens, off the moment it ends. Needs no solar data.</p>
+          </div>
+          <label class="switch" style="--tone: var(--night)">
+            <input type="checkbox" id="f-offpeak">
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="visually-hidden">Off-peak mode</span>
+          </label>
+        </div>
+        <div class="grid grid--form">
+          <div class="field">
+            <label for="f-op-start">Off-peak starts</label>
+            <input type="time" id="f-op-start" required>
+          </div>
+          <div class="field">
+            <label for="f-op-end">Off-peak ends</label>
+            <input type="time" id="f-op-end" required>
+          </div>
+        </div>
+        <div class="daybar" id="daybar" aria-hidden="true">
+          <span class="daybar__seg daybar__seg--solar"></span>
+          <span class="daybar__seg daybar__seg--offpeak"></span>
+          <span class="daybar__seg daybar__seg--offpeak2"></span>
+          <span class="daybar__now"></span>
+          <span class="daybar__ticks"><i>0h</i><i>6h</i><i>12h</i><i>18h</i><i>24h</i></span>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="grid grid--form" style="margin-top:1.25rem">
+      <div class="field tz-field">
+        <label for="f-tz">{{ icon('globe') }}Time zone</label>
+        <input type="text" id="f-tz" list="tz-list" autocomplete="off" spellcheck="false" required placeholder="Asia/Ho_Chi_Minh">
+        <datalist id="tz-list"></datalist>
+        <span class="field__hint">Both windows are read in this zone. <button type="button" class="linkish" id="tz-browser"></button></span>
+      </div>
+      {{ number_field('f-override', 'Manual override lasts', 'min', '5', '0', '1440') }}
+    </div>
+
+    <details class="advanced">
+      <summary>{{ icon('cpu') }}Advanced</summary>
+      <div class="grid grid--form">
+        {{ number_field('f-sustain', 'Confirm for', 's', '10', '0', '3600') }}
+        {{ number_field('f-stale', 'Telemetry stale after', 's', '60', '60', '86400') }}
+        {{ number_field('f-tick', 'Evaluate every', 's', '5', '5', '600') }}
+      </div>
+    </details>
+
+    <hr class="divider">
+    <div class="row row--between">
+      <span class="field__hint" style="max-width:52ch">The switch-off threshold must stay below the
+        switch-on threshold; the gap between them keeps the relay from chattering.</span>
+      <button type="submit" class="btn btn--primary" id="btn-save">{{ icon('check') }}Save settings</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" style="margin-top:1.25rem" aria-labelledby="activity-title">
+  <div class="card__head">
+    <div>
+      <h2 class="card__title" id="activity-title">Activity</h2>
+      <p class="card__sub">Every time the relay moved, and what moved it.</p>
+    </div>
+    <a class="btn btn--sm btn--ghost" href="/activity">All devices{{ icon('chevron') }}</a>
+  </div>
+  <div class="timeline scroll-area" id="events"></div>
+  <div class="empty" id="events-empty" hidden>{{ icon('activity') }}The relay has not moved yet.</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/device.js"></script>
+{% endblock %}

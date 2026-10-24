@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+data/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+._*
+
+# Local device inventory for iot-control — holds Tuya local keys.
+iot-control/devices.json
+
+# Local Tuya credentials and scratch files — never commit.
+tuya-controller/
+
+# Personal publications (contest articles, drafts) — kept out of the repo.
+publications/

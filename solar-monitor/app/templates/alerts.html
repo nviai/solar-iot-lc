@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Alerts</h1>
+    <p>Each rule watches one metric. It fires only once the condition has held for the
+       configured duration, and does not repeat while it is cooling down.</p>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn btn--primary" id="new-rule-btn">{{ icon('plus') }}New rule</button>
+  </div>
+</div>
+
+<div class="grid grid--main-side">
+  <section class="card card--flush">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Rules</h2>
+        <p class="card__sub" id="rule-count">—</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Rule</th>
+            <th scope="col">Condition</th>
+            <th scope="col">State</th>
+            <th scope="col" class="num"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="rules-body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="rules-empty" hidden>{{ icon('bell') }}No rules yet. Create one to get notified.</div>
+  </section>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Alert history</h2>
+        <p class="card__sub" id="event-count">—</p>
+      </div>
+      <button type="button" class="btn btn--sm" id="ack-all">{{ icon('check') }}Mark all read</button>
+    </div>
+    <div class="scroll-area">
+      <div class="timeline" id="events"></div>
+      <div class="empty" id="events-empty" hidden>{{ icon('check') }}Nothing has fired yet.</div>
+    </div>
+  </section>
+</div>
+
+<dialog class="modal" id="rule-dialog" aria-labelledby="rule-dialog-title">
+  <form id="rule-form" method="dialog">
+    <div class="modal__head">
+      <h2 id="rule-dialog-title">New rule</h2>
+      <button type="button" class="btn btn--ghost btn--sm btn--icon" data-close aria-label="Close">{{ icon('x') }}</button>
+    </div>
+    <div class="modal__body">
+      <input type="hidden" id="rule-id">
+      <div class="grid grid--form">
+        <div class="field" style="grid-column:1/-1">
+          <label for="f-name">Name</label>
+          <input type="text" id="f-name" required maxlength="120" placeholder="e.g. High consumption">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label for="f-metric">Metric</label>
+          <select id="f-metric" required></select>
+        </div>
+        <div class="field">
+          <label for="f-op">Condition</label>
+          <select id="f-op" required></select>
+        </div>
+        <div class="field">
+          <label for="f-threshold">Threshold</label>
+          <div class="input-group">
+            <input type="number" id="f-threshold" step="any" required>
+            <span class="input-group__unit" id="f-unit"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-duration">Sustained for</label>
+          <div class="input-group">
+            <input type="number" id="f-duration" min="0" max="86400" step="10" value="0">
+            <span class="input-group__unit">s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-cooldown">Cooldown</label>
+          <div class="input-group">
+            <input type="number" id="f-cooldown" min="0" max="604800" step="60" value="900">
+            <span class="input-group__unit">s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-severity">Severity</label>
+          <select id="f-severity">
+            <option value="info">Info</option>
+            <option value="warning" selected>Warning</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-device">Device</label>
+          <select id="f-device"><option value="*">All devices</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn btn--primary" id="rule-save">Save rule</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/alerts.js"></script>
+{% endblock %}

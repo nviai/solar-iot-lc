@@ -1,0 +1,582 @@
+/* IoT Control — app-specific components on top of base.css. */
+
+.brand__mark--iot {
+  background: linear-gradient(135deg, #18c29c, #0f7fb8);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.45) inset, 0 -2px 0 rgb(0 0 0 / 0.15) inset,
+              0 10px 22px -8px color-mix(in srgb, #0f7fb8 80%, transparent);
+}
+.nav__dot { margin-left: auto; width: 7px; height: 7px; }
+
+:root { --charge: #2ee6a0; --charge-2: #3fb8ff; }
+
+/* --- Garage hero: the charging bay ------------------------------------------- */
+.garage {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.9fr) minmax(220px, 0.75fr);
+  grid-template-areas: "info scene dial";
+  align-items: center; gap: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem; padding: 1.6rem;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background:
+    radial-gradient(70% 90% at 62% 100%, color-mix(in oklab, var(--glow, var(--accent)) 18%, transparent), transparent 70%),
+    linear-gradient(160deg, var(--glass-hi), var(--glass-lo));
+  transition: --rx 0.4s, background 0.6s;
+}
+.garage[data-state="on"] { --glow: var(--charge); }
+.garage[data-state="on"][data-mode="offpeak"] { --glow: var(--night); }
+.garage[data-state="on"][data-mode="solar"] { --glow: var(--s-pv); }
+.garage__info { grid-area: info; display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; z-index: 2; }
+.garage__scene { grid-area: scene; position: relative; min-width: 0; }
+.garage__dial { grid-area: dial; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; z-index: 2; }
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 0.45rem; align-self: flex-start;
+  padding: 0.3rem 0.7rem; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-2); background: var(--surface-3); border: 1px solid var(--border);
+}
+.eyebrow .i { width: 15px; height: 15px; color: var(--accent); }
+.garage__title { font-size: clamp(28px, 3.4vw, 46px); font-weight: 850; letter-spacing: -0.045em; line-height: 1; }
+.garage__status { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem 0.75rem; }
+.garage__state {
+  font-size: 22px; font-weight: 750; letter-spacing: -0.02em;
+  transition: color 0.4s;
+}
+.garage[data-state="on"] .garage__state { color: var(--glow); text-shadow: 0 0 24px color-mix(in srgb, var(--glow) 55%, transparent); }
+.garage[data-state="offline"] .garage__state { color: var(--fault); }
+.garage__meta { font-size: 12.5px; color: var(--text-3); }
+.garage__reason {
+  font-size: 13px; color: var(--text-2); line-height: 1.5;
+  padding: 0.7rem 0.85rem; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+  min-height: 3.2em;
+}
+.garage__actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+/* Mode chips: which schedules are armed, and which one is in charge now. */
+.mode-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.mode-chip {
+  --tone: var(--idle);
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  padding: 0.45rem 0.8rem 0.45rem 0.55rem; border-radius: 13px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-3); opacity: 0.75;
+  transition: all 0.4s var(--ease-out);
+}
+.mode-chip .i {
+  width: 28px; height: 28px; padding: 6px; border-radius: 9px;
+  color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent);
+}
+.mode-chip strong { display: block; font-size: 12.5px; color: var(--text-2); line-height: 1.2; }
+.mode-chip small { display: block; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.mode-chip--solar { --tone: var(--s-pv); }
+.mode-chip--offpeak { --tone: var(--night); }
+.mode-chip[data-armed] { opacity: 1; border-color: color-mix(in srgb, var(--tone) 30%, var(--border)); }
+.mode-chip[data-armed] strong { color: var(--text); }
+.mode-chip[data-current] {
+  background: color-mix(in srgb, var(--tone) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent) inset, 0 10px 28px -12px var(--tone);
+  transform: translateY(-2px);
+}
+.mode-chip[data-current] .i { color: #fff; background: var(--tone); box-shadow: 0 0 16px var(--tone); }
+
+/* Big 3D power key: a physical button with depth that sinks when pressed. */
+.power-key {
+  --tone: var(--accent);
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  height: 52px; padding: 0 1.3rem 0 0.4rem; border: 0; border-radius: 16px;
+  color: var(--text); font-weight: 700; font-size: 14.5px; cursor: pointer;
+  background: linear-gradient(180deg, var(--glass-hi), var(--surface-3));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3) inset, 0 5px 0 -1px var(--border-strong), 0 14px 26px -12px rgb(0 0 0 / 0.55);
+  transform: translateY(0);
+  transition: transform 0.14s var(--ease-out), box-shadow 0.14s, background 0.3s, color 0.3s;
+}
+.power-key__cap {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px;
+  color: var(--tone);
+  background: radial-gradient(circle at 40% 30%, var(--surface), var(--surface-3));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3) inset, 0 3px 8px -2px rgb(0 0 0 / 0.4);
+  transition: color 0.3s, box-shadow 0.3s, background 0.3s;
+}
+.power-key__cap .i { width: 21px; height: 21px; stroke-width: 2.4; }
+.power-key:hover:not(:disabled) { transform: translateY(-1px); }
+.power-key:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 rgb(255 255 255 / 0.2) inset, 0 1px 0 -1px var(--border-strong), 0 4px 10px -6px rgb(0 0 0 / 0.5); }
+.power-key:disabled { opacity: 0.5; cursor: not-allowed; }
+.power-key[aria-pressed="true"] {
+  --tone: var(--charge);
+  color: #04130d;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--charge) 85%, #fff), var(--charge));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset, 0 5px 0 -1px color-mix(in oklab, var(--charge) 50%, #000),
+              0 14px 34px -10px color-mix(in srgb, var(--charge) 80%, transparent);
+}
+.power-key[aria-pressed="true"] .power-key__cap { color: var(--charge); background: #062018; box-shadow: 0 0 18px color-mix(in srgb, var(--charge) 60%, transparent) inset; }
+.power-key.is-busy { pointer-events: none; }
+.power-key.is-busy .power-key__cap .i { animation: spin 0.8s linear infinite; }
+
+/* --- The 3D stage -------------------------------------------------------------- */
+.stage {
+  --tx: 0deg; --ty: 0deg;
+  position: relative; width: 100%; aspect-ratio: 1000 / 520;
+  perspective: 1100px; perspective-origin: 50% 30%;
+}
+.stage__world {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tx)) rotateY(var(--ty));
+  transition: transform 0.9s var(--ease-out);
+}
+
+/* Floor: a lit grid receding to the horizon; it streams toward the car while charging. */
+.stage__floor {
+  position: absolute; left: -30%; right: -30%; bottom: -6%; height: 70%;
+  transform-origin: 50% 100%;
+  transform: rotateX(78deg);
+  -webkit-mask: radial-gradient(60% 75% at 50% 70%, #000 30%, transparent 75%);
+          mask: radial-gradient(60% 75% at 50% 70%, #000 30%, transparent 75%);
+}
+.stage__grid {
+  position: absolute; inset: -50% 0 0;
+  background:
+    linear-gradient(color-mix(in oklab, var(--glow, var(--accent)) 55%, transparent) 1.5px, transparent 1.5px) 0 0 / 100% 44px,
+    linear-gradient(90deg, color-mix(in oklab, var(--glow, var(--accent)) 40%, transparent) 1.5px, transparent 1.5px) 0 0 / 44px 100%;
+  opacity: 0.38;
+}
+.garage[data-state="on"] .stage__grid { animation: grid-flow 1.6s linear infinite; opacity: 0.65; }
+@keyframes grid-flow { to { transform: translateY(44px); } }
+
+.stage__pool {
+  position: absolute; left: 22%; right: 2%; bottom: 2%; height: 26%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--glow, var(--accent)) 55%, transparent), transparent);
+  filter: blur(18px); opacity: 0.55;
+  transition: opacity 0.6s;
+}
+.garage[data-state="on"] .stage__pool { opacity: 1; animation: breathe 2.8s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.6; transform: scaleX(0.94); } }
+
+/* The car floats a hair above its reflection and settles in on load. */
+/* Both photos face right, so the car parks on the right and the charger on the left. */
+.car {
+  position: absolute; right: 3%; bottom: 8%; width: 66%;
+  animation: car-in 1.4s var(--ease-out) both;
+  z-index: 2;
+}
+[data-view="rear"] .car { width: 72%; }
+@keyframes car-in { from { opacity: 0; translate: 6% 0; filter: blur(8px); } }
+.car__img {
+  position: relative; width: 100%; height: auto; z-index: 2;
+  filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.35)) saturate(1.05);
+}
+.car__mirror {
+  position: absolute; left: 0; top: 100%; width: 100%; height: auto;
+  transform: scaleY(-1); margin-top: -3%;   /* flipped in place, hanging under the wheels */
+  opacity: 0.22; filter: blur(2px);
+  -webkit-mask: linear-gradient(to top, rgb(0 0 0 / 0.9), transparent 38%);
+          mask: linear-gradient(to top, rgb(0 0 0 / 0.9), transparent 38%);
+  pointer-events: none;
+}
+.car__shadow {
+  position: absolute; left: 2%; right: 4%; bottom: 0.5%; height: 9%; z-index: 1;
+  border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / 0.65), transparent);
+  filter: blur(6px);
+}
+/* A slow light sweep across the body work. */
+.car__glint {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.35) 50%, transparent 60%) no-repeat;
+  background-size: 250% 100%;
+  -webkit-mask: var(--car-mask) center / 100% 100% no-repeat;
+          mask: var(--car-mask) center / 100% 100% no-repeat;
+  mix-blend-mode: overlay;
+  animation: glint 7s ease-in-out 1.2s infinite;
+}
+[data-view="front"] { --car-mask: url("/static/img/lynkco-02-front.webp"); }
+[data-view="rear"] { --car-mask: url("/static/img/lynkco-02-rear.webp"); }
+@keyframes glint { 0% { background-position: 130% 0; } 45%, 100% { background-position: -30% 0; } }
+
+/* Wall charger: a small CSS cuboid with a screen and status LED. */
+.charger {
+  position: absolute; left: 5%; bottom: 36%; width: 7.5%; aspect-ratio: 1 / 1.9;
+  transform-style: preserve-3d; transform: translateZ(-30px) rotateY(22deg);
+  z-index: 1;
+}
+.charger__body { position: absolute; inset: 0; transform-style: preserve-3d; }
+.charger__face { position: absolute; display: block; border-radius: 10px; }
+.charger__face--front {
+  inset: 0; display: grid; justify-items: center; align-content: start; gap: 12%; padding-top: 22%;
+  background: linear-gradient(160deg, #2a3348, #121828 70%);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  box-shadow: 0 20px 30px -12px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.15) inset;
+  transform: translateZ(10px);
+}
+:root:not([data-theme="dark"]) .charger__face--front {
+  background: linear-gradient(160deg, #ffffff, #d9dfeb 70%);
+  border-color: rgb(15 23 42 / 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .charger__face--front { background: linear-gradient(160deg, #2a3348, #121828 70%); border-color: rgb(255 255 255 / 0.1); }
+}
+.charger__face--side {
+  top: 0; bottom: 0; left: 0; width: 20px; border-radius: 10px 0 0 10px;
+  background: linear-gradient(90deg, #1b2234, #0d1220);
+  transform-origin: 0 50%; transform: translateZ(-10px) rotateY(-90deg);
+}
+.charger__face--top {
+  left: 0; right: 0; top: 0; height: 20px;
+  background: #3a4560; transform-origin: 50% 0; transform: translateZ(10px) rotateX(-90deg);
+}
+.charger__screen {
+  display: grid; place-items: center; width: 62%; aspect-ratio: 1.3;
+  border-radius: 6px; background: #050a14; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06) inset;
+}
+.charger__bolt {
+  width: 45%; aspect-ratio: 0.7; background: var(--idle);
+  clip-path: polygon(55% 0, 0 58%, 42% 58%, 30% 100%, 100% 38%, 58% 38%);
+  transition: background 0.4s, filter 0.4s;
+}
+.charger__led {
+  width: 32%; height: 4px; border-radius: 4px; background: var(--idle);
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.garage[data-state="on"] .charger__bolt { background: var(--glow); filter: drop-shadow(0 0 6px var(--glow)); animation: blink 1.6s ease-in-out infinite; }
+.garage[data-state="on"] .charger__led { background: var(--glow); box-shadow: 0 0 14px 2px var(--glow); }
+.garage[data-state="off"] .charger__led { background: var(--s-load); box-shadow: 0 0 8px var(--s-load); }
+.garage[data-state="offline"] .charger__led { background: var(--fault); box-shadow: 0 0 10px var(--fault); }
+@keyframes blink { 50% { opacity: 0.45; } }
+
+/* Charging cable, with energy streaming along it while charging. */
+.cable { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; overflow: visible; pointer-events: none; }
+.cable__wire {
+  fill: none; stroke: color-mix(in oklab, var(--text-3) 55%, #10141f); stroke-width: 7; stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.35));
+}
+.cable__flow {
+  fill: none; stroke: var(--glow, var(--charge)); stroke-width: 3.5; stroke-linecap: round;
+  stroke-dasharray: 2 22; vector-effect: non-scaling-stroke;
+  opacity: 0; transition: opacity 0.5s;
+  filter: drop-shadow(0 0 4px var(--glow, var(--charge)));
+}
+.garage[data-state="on"] .cable__flow { opacity: 1; animation: cable-flow 0.9s linear infinite; }
+@keyframes cable-flow { to { stroke-dashoffset: -24; } }
+
+/* Sparks rising off the car while it charges. */
+.sparks { position: absolute; left: 34%; right: 4%; bottom: 18%; height: 60%; z-index: 4; pointer-events: none; }
+.sparks i {
+  position: absolute; bottom: 0; left: calc(var(--i) * 7%);
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--glow, var(--charge)); box-shadow: 0 0 10px 2px var(--glow, var(--charge));
+  opacity: 0;
+}
+.garage[data-state="on"] .sparks i {
+  animation: spark 3.2s ease-in infinite;
+  animation-delay: calc(var(--i) * -0.37s);
+}
+@keyframes spark {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  15% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-260%) translateX(calc((var(--i) - 7) * 4px)) scale(1.2); }
+}
+.sparks i:nth-child(odd) { bottom: 18%; }
+
+.garage__hud { position: absolute; left: 0; top: 0; display: flex; gap: 0.5rem; z-index: 5; }
+.hud-stat {
+  padding: 0.45rem 0.7rem; border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-solid) 55%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.hud-stat span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.hud-stat strong { display: block; font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.hud-stat strong small { font-size: 11px; color: var(--text-3); margin-left: 0.15rem; }
+
+/* Scrolling past the hero eases the car away, driven by the scroll position. */
+@supports (animation-timeline: view()) {
+  .garage .car {
+    animation: car-in 1.4s var(--ease-out) both, car-scroll linear both;
+    animation-timeline: auto, view();
+    animation-range: normal, exit 0% exit 100%;
+  }
+  @keyframes car-scroll { to { translate: 8% -6%; scale: 0.94; opacity: 0.4; } }
+}
+
+/* --- 24 h dial ------------------------------------------------------------------- */
+.dial { position: relative; margin: 0; width: min(100%, 230px); aspect-ratio: 1; }
+.dial svg { width: 100%; height: 100%; overflow: visible; }
+.dial__face { fill: var(--surface-2); stroke: var(--border); filter: drop-shadow(0 12px 22px rgb(0 0 0 / 0.25)); }
+.dial__track { fill: none; stroke: var(--surface-3); stroke-width: 14; }
+.dial__ticks line { stroke: var(--text-3); stroke-width: 1.2; opacity: 0.6; }
+.dial__ticks line.is-major { stroke-width: 2; opacity: 1; }
+.dial__ticks text { fill: var(--text-3); font-size: 9.5px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; font-family: var(--font); }
+.dial__arc { fill: none; stroke-width: 14; stroke-linecap: round; opacity: 0.3; transition: opacity 0.4s, filter 0.4s; }
+.dial__arc[data-armed] { opacity: 1; }
+.dial__arc[data-current] { filter: drop-shadow(0 0 7px var(--arc-glow)); }
+.dial__arc--solar { --arc-glow: var(--s-pv); }
+.dial__arc--offpeak { --arc-glow: var(--night); }
+.dial__hand { transform-origin: 110px 110px; transition: transform 1.2s var(--ease-spring); }
+.dial__hand line { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
+.dial__hand circle { fill: var(--text); stroke: var(--surface-solid); stroke-width: 3; filter: drop-shadow(0 0 6px var(--text)); }
+.dial__center {
+  position: absolute; inset: 27%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; pointer-events: none;
+}
+.dial__time { font-size: 26px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; }
+.dial__zone { font-size: 10px; color: var(--text-3); margin-top: 0.2rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dial__next { font-size: 10.5px; font-weight: 650; color: var(--text-2); margin-top: 0.35rem; line-height: 1.25; }
+.dial-legend { display: flex; gap: 0.9rem; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-2); }
+.dial-legend li { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* --- Solar strip ------------------------------------------------------------ */
+.solar-strip { margin-bottom: 1.25rem; }
+.solar-strip__grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.85rem;
+}
+.solar-stat {
+  position: relative; display: flex; align-items: center; gap: 0.8rem; min-width: 0;
+  padding: 0.9rem 1rem; border-radius: var(--radius);
+  background:
+    radial-gradient(100% 120% at 100% 0%, color-mix(in srgb, var(--tone) 14%, transparent), transparent 60%),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-3d);
+}
+.solar-stat__label { font-size: 12.5px; color: var(--text-3); font-weight: 600; }
+.solar-stat__value {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.solar-stat__value small { font-size: 12.5px; font-weight: 650; color: var(--text-3); margin-left: 0.15rem; }
+.solar-strip[data-stale] .solar-stat__value { color: var(--text-3); }
+@media (max-width: 1000px) { .solar-strip__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .solar-strip__grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* --- Device card ------------------------------------------------------------- */
+.device-card {
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.device-card[data-state="on"] {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+  box-shadow: var(--shadow-3d), 0 0 0 1px color-mix(in srgb, var(--ok) 25%, transparent), 0 20px 50px -24px color-mix(in srgb, var(--ok) 70%, transparent);
+}
+.device-card__head { display: flex; align-items: center; gap: 0.8rem; }
+.device-card__icon {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; flex: none;
+  color: var(--text-2); background: var(--surface-3);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.15) inset, 0 6px 14px -8px rgb(0 0 0 / 0.5);
+  transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+}
+.device-card[data-state="on"] .device-card__icon {
+  color: #fff; background: linear-gradient(145deg, color-mix(in oklab, var(--ok) 80%, #fff), var(--ok));
+  box-shadow: 0 0 22px -4px var(--ok);
+}
+.device-card__title { min-width: 0; flex: 1; }
+.device-card__name { font-weight: 700; font-size: 15.5px; text-decoration: none; }
+.device-card__name:hover { text-decoration: underline; }
+.device-card__sub { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+.device-card__state { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.device-card__value { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; }
+.device-card[data-state="on"] .device-card__value { color: var(--ok); text-shadow: 0 0 22px color-mix(in srgb, var(--ok) 45%, transparent); }
+.device-card__meta { font-size: 12.5px; color: var(--text-3); }
+.device-card__controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.device-card__modes { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.device-card__modes .badge .i { width: 13px; height: 13px; }
+.device-card__reason {
+  min-height: 2.6em; font-size: 13px; color: var(--text-2);
+  padding: 0.65rem 0.8rem; border-radius: var(--radius-sm); background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.device-card__more {
+  display: inline-flex; align-items: center; gap: 0.3rem; margin-top: auto;
+  font-size: 13px; font-weight: 650; color: var(--text-2); text-decoration: none;
+}
+.device-card__more:hover { color: var(--text); }
+.device-card__more .i { width: 15px; height: 15px; transition: transform 0.25s var(--ease-out); }
+.device-card__more:hover .i { transform: translateX(3px); }
+
+/* On/Off pair: a segmented control whose active half carries the state colour. */
+.power-toggle {
+  display: inline-flex; padding: 3px; gap: 3px; border-radius: 13px;
+  background: var(--surface-3); border: 1px solid var(--border);
+  box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.35) inset;
+}
+.power-toggle button {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  height: 34px; padding: 0 1rem; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text-2); font-weight: 650; font-size: 13px; cursor: pointer;
+  transition: background 0.25s, color 0.25s, box-shadow 0.25s, transform 0.12s;
+}
+.power-toggle button .i { width: 15px; height: 15px; }
+.power-toggle button:hover:not(:disabled) { color: var(--text); background: var(--surface-hover); }
+.power-toggle button:active:not(:disabled) { transform: translateY(1px); }
+.power-toggle button:disabled { cursor: not-allowed; opacity: 0.55; }
+.power-toggle button[aria-pressed="true"] {
+  background: linear-gradient(180deg, var(--glass-hi), var(--surface-2)); color: var(--text);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.2) inset, 0 4px 10px -4px rgb(0 0 0 / 0.5); opacity: 1;
+}
+.power-toggle button[data-on="true"][aria-pressed="true"] {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--ok) 80%, #fff), var(--ok)); color: #fff;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 6px 16px -6px var(--ok);
+}
+.power-toggle.is-busy { opacity: 0.6; pointer-events: none; }
+
+/* --- Device page: hero variant ---------------------------------------------------- */
+.garage--detail {
+  grid-template-columns: minmax(0, 1.7fr) minmax(250px, 0.8fr) minmax(220px, 0.7fr);
+  grid-template-areas: "scene relay dial";
+  margin-bottom: 0;
+}
+.relay-panel { grid-area: relay; z-index: 2; }
+.relay { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.25rem 0 1.1rem; text-align: center; }
+.relay__orb {
+  --tone: var(--idle);
+  position: relative; display: grid; place-items: center; width: 118px; height: 118px; border-radius: 50%;
+  color: var(--tone);
+  background: radial-gradient(circle at 38% 30%, color-mix(in srgb, var(--tone) 30%, var(--surface-solid)), var(--surface-solid) 70%);
+  border: 2px solid color-mix(in srgb, var(--tone) 50%, var(--border));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 -8px 18px -6px rgb(0 0 0 / 0.35) inset, 0 20px 40px -18px rgb(0 0 0 / 0.6);
+  transform: perspective(500px) rotateX(14deg);
+  transition: color 0.4s, border-color 0.4s, box-shadow 0.4s;
+}
+.relay__orb .i { width: 44px; height: 44px; stroke-width: 2.3; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--tone) 50%, transparent)); }
+.relay__ring {
+  position: absolute; inset: -9px; border-radius: 50%;
+  background: conic-gradient(from var(--spin), transparent 0 60%, var(--tone) 85%, transparent);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+          mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  opacity: 0;
+}
+.relay[data-state="on"] .relay__orb {
+  --tone: var(--charge);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 0 0 10px color-mix(in srgb, var(--charge) 10%, transparent),
+              0 20px 50px -12px color-mix(in srgb, var(--charge) 70%, transparent);
+}
+.relay[data-state="on"] .relay__ring { opacity: 1; animation: ring-spin 2.2s linear infinite; }
+@keyframes ring-spin { to { --spin: 360deg; } }
+.relay[data-state="off"] .relay__orb { --tone: var(--text-2); }
+.relay[data-state="offline"] .relay__orb { --tone: var(--fault); }
+.relay__value { margin-top: 0.7rem; font-size: 26px; font-weight: 800; letter-spacing: -0.03em; }
+.relay[data-state="on"] .relay__value { color: var(--charge); }
+.relay__meta { font-size: 13px; color: var(--text-3); min-height: 1.3em; }
+.relay__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.relay__hint { margin-top: 0.6rem; font-size: 12px; color: var(--text-3); text-align: center; }
+
+/* --- Automation status bar ---------------------------------------------------- */
+.statusbar {
+  display: grid; grid-template-columns: repeat(4, minmax(0, auto)) minmax(0, 1fr); gap: 1px;
+  border-radius: var(--radius); overflow: hidden;
+  background: var(--border); border: 1px solid var(--border);
+}
+.statusbar__item { padding: 0.75rem 0.95rem; background: var(--surface-2); min-width: 0; }
+.statusbar__label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.statusbar__item strong { display: block; margin-top: 0.15rem; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.statusbar__item--wide strong { font-weight: 500; color: var(--text-2); }
+.statusbar[data-active="yes"] .statusbar__item--wide { background: color-mix(in srgb, var(--ok) 8%, var(--surface-2)); }
+.statusbar[data-active="yes"] .statusbar__item--wide strong { color: var(--text); }
+@media (max-width: 900px) {
+  .statusbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .statusbar__item--wide { grid-column: 1 / -1; }
+}
+
+/* --- Mode panels ------------------------------------------------------------------ */
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+@container (max-width: 760px) { .modes { grid-template-columns: minmax(0, 1fr); } }
+.mode-panel {
+  --tone: var(--s-pv);
+  margin: 0; min-width: 0; padding: 1.1rem; border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(90% 80% at 0% 0%, color-mix(in srgb, var(--tone) 12%, transparent), transparent 60%),
+    var(--surface-2);
+  transition: border-color 0.35s, box-shadow 0.35s, opacity 0.35s;
+}
+.mode-panel--offpeak { --tone: var(--night); }
+.mode-panel:has(.mode-panel__head input:checked) {
+  border-color: color-mix(in srgb, var(--tone) 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent) inset, 0 18px 40px -24px var(--tone);
+}
+.mode-panel:not(:has(.mode-panel__head input:checked)) > :not(.mode-panel__head):not(legend) { opacity: 0.55; }
+.mode-panel[data-current] .mode-panel__icon { box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 20%, transparent), 0 0 24px var(--tone); }
+.mode-panel__head { display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 1rem; }
+.mode-panel__head > div { flex: 1; min-width: 0; }
+.mode-panel__head h3 { font-size: 15px; font-weight: 750; display: flex; align-items: center; gap: 0.5rem; }
+.mode-panel__head h3 small {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.1rem 0.45rem; border-radius: 6px; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent);
+}
+.mode-panel__head p { font-size: 12.5px; color: var(--text-3); margin-top: 0.2rem; }
+.mode-panel__icon {
+  display: grid; place-items: center; width: 42px; height: 42px; flex: none; border-radius: 13px; color: #fff;
+  background: linear-gradient(145deg, color-mix(in oklab, var(--tone) 75%, #fff), var(--tone));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.4) inset, 0 10px 22px -10px var(--tone);
+  transition: box-shadow 0.4s;
+}
+.mode-panel__icon .i { width: 21px; height: 21px; }
+
+/* Linear 24 h bar under the off-peak inputs. */
+.daybar {
+  position: relative; height: 12px; margin: 1.3rem 0 1.4rem; border-radius: 999px;
+  background: var(--surface-3); box-shadow: 0 1px 3px rgb(0 0 0 / 0.3) inset;
+}
+.daybar__seg {
+  position: absolute; top: 0; bottom: 0; border-radius: 999px;
+  left: calc(var(--from, 0) * 100%); width: calc(var(--len, 0) * 100%);
+  transition: left 0.6s var(--ease-out), width 0.6s var(--ease-out), opacity 0.3s;
+}
+.daybar__seg--solar { background: linear-gradient(90deg, var(--brand-1), var(--brand-2)); }
+.daybar__seg--offpeak, .daybar__seg--offpeak2 { background: linear-gradient(90deg, var(--night), var(--accent-2)); }
+.daybar__seg[data-off] { opacity: 0.25; }
+.daybar__now {
+  position: absolute; top: -5px; bottom: -5px; width: 3px; border-radius: 3px;
+  left: calc(var(--now, 0) * 100%); background: var(--text); box-shadow: 0 0 10px var(--text);
+  transition: left 1s var(--ease-out);
+}
+.daybar__ticks { position: absolute; left: 0; right: 0; top: 100%; display: flex; justify-content: space-between; margin-top: 4px; }
+.daybar__ticks i { font-style: normal; font-size: 10px; color: var(--text-3); font-weight: 600; }
+
+.tz-field label { display: inline-flex; align-items: center; gap: 0.35rem; }
+.tz-field label .i { width: 14px; height: 14px; }
+.linkish {
+  padding: 0; border: 0; background: none; color: var(--accent); font-size: inherit; font-weight: 650; cursor: pointer;
+}
+.linkish:hover { text-decoration: underline; }
+.linkish:empty { display: none; }
+
+.advanced { margin-top: 1.1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.advanced summary {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; cursor: pointer;
+  font-weight: 650; font-size: 13px; color: var(--text-2); list-style: none;
+}
+.advanced summary::-webkit-details-marker { display: none; }
+.advanced summary::after { content: "›"; margin-left: auto; font-size: 18px; transition: rotate 0.3s var(--ease-out); }
+.advanced[open] summary::after { rotate: 90deg; }
+.advanced summary .i { width: 16px; height: 16px; }
+.advanced > .grid { padding: 0 1rem 1rem; }
+/* Animate the disclosure open/closed (Chrome 131+ ::details-content). */
+.advanced::details-content {
+  block-size: 0; overflow: hidden;
+  transition: block-size 0.4s var(--ease-out), content-visibility 0.4s allow-discrete;
+}
+.advanced[open]::details-content { block-size: auto; }
+:root { interpolate-size: allow-keywords; }
+
+/* --- System page -------------------------------------------------------------- */
+.howto { margin: 0; padding-left: 1.25rem; color: var(--text-2); display: flex; flex-direction: column; gap: 0.75rem; }
+.howto li { padding-left: 0.25rem; }
+.code-block {
+  margin: 0.6rem 0 0; padding: 0.85rem 1rem; overflow-x: auto;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
+/* --- Responsive hero ---------------------------------------------------------- */
+@media (max-width: 1280px) {
+  .garage { grid-template-columns: minmax(0, 1fr) minmax(200px, 0.6fr); grid-template-areas: "scene scene" "info dial"; }
+  .garage--detail { grid-template-columns: minmax(0, 1fr) minmax(200px, 0.7fr); grid-template-areas: "scene scene" "relay dial"; }
+}
+@media (max-width: 720px) {
+  .garage, .garage--detail { grid-template-columns: minmax(0, 1fr); grid-template-areas: "scene" "info" "relay" "dial"; padding: 1.1rem; }
+  .garage__hud { position: static; margin-bottom: 0.5rem; }
+}

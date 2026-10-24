@@ -1,0 +1,30 @@
+{
+  "devices": [
+    {
+      "id": "ev-charger",
+      "name": "EV charger",
+      "kind": "tuya_switch",
+      "description": "Relay feeding the EV charger",
+      "tuya": {
+        "device_id": "bf0123456789abcdefghij",
+        "ip": "192.168.1.50",
+        "local_key": "replace-with-local-key",
+        "version": 3.4,
+        "dp": 1
+      }
+    },
+    {
+      "id": "water-heater",
+      "name": "Water heater",
+      "kind": "tuya_switch",
+      "description": "Smart plug on the hot-water tank",
+      "tuya": {
+        "device_id": "bf9876543210zyxwvutsrq",
+        "ip": "192.168.1.51",
+        "local_key": "replace-with-local-key",
+        "version": 3.3,
+        "dp": 1
+      }
+    }
+  ]
+}

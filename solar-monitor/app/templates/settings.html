@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% macro ok_badge(ok, yes, no) -%}
+<span class="badge" data-tone="{{ 'ok' if ok else 'fault' }}">{{ yes if ok else no }}</span>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Settings</h1>
+    <p>Connection health, the public API, polling schedule and the callback address for data subscriptions.</p>
+  </div>
+</div>
+
+<div class="stack">
+  <div class="grid grid--2">
+    <section class="card">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title">SolaX connection</h2>
+          <p class="card__sub">OAuth2 client credentials from your developer-portal application.</p>
+        </div>
+      </div>
+      <dl class="kv">
+        <dt>Gateway</dt><dd><code>{{ status.api_base }}</code></dd>
+        <dt>Client ID</dt>
+        <dd>{% if settings.solax_client_id %}<code>{{ settings.solax_client_id[:8] }}…</code>{% else %}{{ ok_badge(false, '', 'missing') }}{% endif %}</dd>
+        <dt>Client secret</dt><dd>{{ ok_badge(settings.solax_client_secret, 'set', 'missing') }}</dd>
+        {% if diagnosis %}
+        <dt>Access token</dt>
+        <dd>{% if diagnosis.token_ok %}{{ ok_badge(true, 'valid', '') }}
+            <div class="muted">expires {{ diagnosis.token_expires_at[:16].replace('T', ' ') }}</div>
+            {% else %}{{ ok_badge(false, '', 'failed') }}<div class="muted">{{ diagnosis.error }}</div>{% endif %}</dd>
+        {% endif %}
+        <dt>Poller</dt>
+        <dd>{% if status.running %}{{ ok_badge(true, 'running', '') }}{% else %}<span class="badge" data-tone="warn">stopped</span>{% endif %}
+            <div class="muted">{{ status.poll_count }} cycles</div></dd>
+        {% for register_no, message in status.errors.items() %}
+        <dt>Error <code>{{ register_no }}</code></dt><dd style="color:var(--fault)">{{ message }}</dd>
+        {% endfor %}
+        {% if settings.demo_mode %}<dt>Demo mode</dt><dd><span class="badge" data-tone="info">on — synthetic data</span></dd>{% endif %}
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title">Public API</h2>
+          <p class="card__sub">Read the live power figures from other apps. Served from memory — no SolaX quota.</p>
+        </div>
+        <a class="btn btn--sm" href="/docs" target="_blank" rel="noopener">{{ icon('code') }}Interactive docs</a>
+      </div>
+      <div class="field">
+        <label for="api-base">Base URL</label>
+        <div class="copyfield">
+          <input type="text" id="api-base" readonly value="{{ api_base }}">
+          <button type="button" class="btn btn--icon" data-copy="api-base" aria-label="Copy base URL">{{ icon('copy') }}</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:1rem">
+        <table>
+          <tbody>
+            <tr><td><span class="endpoint"><span class="method">GET</span><code>/power</code></span></td><td class="secondary">Aggregated live power — the integration endpoint</td></tr>
+            <tr><td><span class="endpoint"><span class="method">GET</span><code>/devices</code></span></td><td class="secondary">Latest full reading per device</td></tr>
+            <tr><td><span class="endpoint"><span class="method">GET</span><code>/devices/{id}/history</code></span></td><td class="secondary">Stored samples, <code>?hours=</code></td></tr>
+            <tr><td><span class="endpoint"><span class="method">GET</span><code>/devices/{id}/daily</code></span></td><td class="secondary">Energy per day, <code>?days=</code></td></tr>
+            <tr><td><span class="endpoint"><span class="method">GET</span><code>/status</code></span></td><td class="secondary">Poller health</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-title">Example</p>
+      <pre class="snippet">curl {{ api_base }}/power</pre>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Polling schedule</h2>
+        <p class="card__sub">Every cycle costs 2–3 API calls per device against your service package's quota.
+          Overnight nothing is produced, so the interval can stretch — or stop — until morning.</p>
+      </div>
+      <span class="badge" id="sched-badge" data-tone="idle">—</span>
+    </div>
+
+    <form id="schedule-form">
+      <div class="grid grid--form">
+        <div class="field">
+          <label for="s-interval">Normal interval</label>
+          <div class="input-group"><input type="number" id="s-interval" min="15" max="86400" step="15" required><span class="input-group__unit">s</span></div>
+        </div>
+        <div class="field">
+          <label for="s-start">Quiet hours from</label>
+          <input type="time" id="s-start" required>
+        </div>
+        <div class="field">
+          <label for="s-end">Quiet hours until</label>
+          <input type="time" id="s-end" required>
+        </div>
+        <div class="field">
+          <label for="s-mode">During quiet hours</label>
+          <select id="s-mode">
+            <option value="interval">Poll at a slower interval</option>
+            <option value="pause">Do not call the API at all</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="s-quiet-interval">Quiet interval</label>
+          <div class="input-group"><input type="number" id="s-quiet-interval" min="60" max="86400" step="60" required><span class="input-group__unit">s</span></div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="row row--between">
+        <label class="switch">
+          <input type="checkbox" id="s-enabled">
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+          <span class="switch__label">Enable quiet hours</span>
+        </label>
+        <div class="row">
+          <span class="muted" id="sched-hint">—</span>
+          <button type="submit" class="btn btn--primary" id="sched-save">Save schedule</button>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:.75rem">Times are local to <code>{{ settings.timezone }}</code> (<code>TIMEZONE</code> in <code>.env</code>).
+        Windows that cross midnight work as expected. The refresh button always polls immediately.</p>
+    </form>
+  </section>
+
+  {% if diagnosis and diagnosis.devices %}
+  <section class="card card--flush">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Discovered devices</h2>
+        <p class="card__sub">Found automatically from the account — nothing to configure by hand.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Registration No.</th>
+            <th scope="col">Inverter</th>
+            <th scope="col">Battery</th>
+            <th scope="col">Plant</th>
+            <th scope="col" class="num">Rated</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for device in diagnosis.devices %}
+          <tr>
+            <td><code>{{ device.register_no }}</code></td>
+            <td><code>{{ device.inverter_sn }}</code></td>
+            <td>{% if device.battery_sn %}<code>{{ device.battery_sn }}</code>{% else %}—{% endif %}</td>
+            <td><code>{{ device.plant_id or '—' }}</code></td>
+            <td class="num">{{ device.rated_power }} kW</td>
+            <td><span class="badge" data-tone="{{ 'ok' if device.online else 'warn' }}">{{ 'online' if device.online else 'offline' }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Live device data</h2>
+        <p class="card__sub">Every field the API reports right now. Refreshes every 30 seconds.</p>
+      </div>
+    </div>
+    <div id="device-detail"><div class="empty">Loading…</div></div>
+  </section>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Callback address</h2>
+        <p class="card__sub">For the <em>Callback Address</em> field of your developer-portal application.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="cb-url">Paste this into the "Callback Address" field</label>
+      <div class="copyfield">
+        <input type="text" id="cb-url" readonly value="{{ callback_url }}">
+        <button type="button" class="btn btn--icon" data-copy="cb-url" aria-label="Copy callback URL">{{ icon('copy') }}</button>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:1rem">
+      {{ icon('info') }}
+      <div>
+        <p>SolaX pushes to this endpoint for the <strong>Data Subscription</strong> feature (realtime or
+           alarm data) and for asynchronous remote-control results.</p>
+        <ol>
+          <li>It must be <strong>reachable from the internet</strong> — during development use a tunnel
+              such as <code>ngrok http 8000</code> and append <code>/callback/solax</code>.</li>
+          <li>It must answer <strong>2xx quickly</strong>, or the delivery is retried.</li>
+          <li>Set <code>CALLBACK_SECRET</code> to require a shared secret in the
+              <code>X-Solax-Signature</code> / <code>X-Callback-Secret</code> header or <code>?secret=</code>.</li>
+        </ol>
+        <p>The envelope is not published, so any JSON shape is accepted, logged below, and ingested when it looks like telemetry.</p>
+      </div>
+    </div>
+
+    <p class="section-title">Recent callbacks</p>
+    {% if callbacks %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Received</th><th scope="col">Body</th></tr></thead>
+        <tbody>
+          {% for entry in callbacks %}
+          <tr>
+            <td style="white-space:nowrap">{{ entry.ts[:19].replace('T', ' ') }}</td>
+            <td><code style="display:block;max-width:80ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ entry.body }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">Nothing received yet. Try it:
+      <pre class="snippet" style="text-align:left;max-width:100%">curl -X POST {{ callback_url }} -H 'Content-Type: application/json' -d '{"registerNo":"TEST","acPower1":1200}'</pre>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings.js"></script>
+{% endblock %}

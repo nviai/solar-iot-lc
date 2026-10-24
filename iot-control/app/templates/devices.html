@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% from "partials/garage.html" import stage, dial %}
+{% block title %}Devices{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>EV Charging</h1>
+    <p>Charge on surplus sun by day and on the off-peak tariff by night — or switch by hand.
+       Solar figures come from the Solar Monitor; switches are driven directly over the LAN.</p>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn" id="refresh-all">{{ icon('refresh') }}Refresh</button>
+  </div>
+</div>
+
+{% if devices %}
+{% set hero = devices[0] %}
+<section class="card garage" id="garage" data-garage data-device="{{ hero.id }}" data-state="unknown" data-mode="idle" aria-labelledby="garage-title">
+  <div class="garage__info">
+    <span class="eyebrow">{{ icon('car') }}{{ hero.name }}</span>
+    <h2 class="garage__title" id="garage-title"><span class="gradient-text">Lynk&nbsp;&amp;&nbsp;Co&nbsp;02</span></h2>
+    <div class="garage__status">
+      <span class="garage__state" data-role="g-state" data-live>Checking…</span>
+      <span class="garage__meta" data-role="g-meta"></span>
+    </div>
+
+    <div class="mode-chips" role="list" aria-label="Automation modes">
+      <span class="mode-chip mode-chip--solar" role="listitem" data-role="chip-solar">
+        {{ icon('sun') }}<span><strong>Solar</strong><small data-role="chip-solar-text">—</small></span>
+      </span>
+      <span class="mode-chip mode-chip--offpeak" role="listitem" data-role="chip-offpeak">
+        {{ icon('moon') }}<span><strong>Off-peak</strong><small data-role="chip-offpeak-text">—</small></span>
+      </span>
+    </div>
+
+    <p class="garage__reason" data-role="g-reason">&nbsp;</p>
+
+    <div class="garage__actions">
+      <button type="button" class="power-key" data-role="g-power" aria-pressed="false" disabled>
+        <span class="power-key__cap">{{ icon('power') }}</span>
+        <span class="power-key__label" data-role="g-power-label">Start charging</span>
+      </button>
+      <a class="btn" href="/devices/{{ hero.id }}">{{ icon('sliders') }}Schedule &amp; settings</a>
+    </div>
+  </div>
+
+  <div class="garage__scene">
+    {{ stage('front') }}
+    <div class="garage__hud">
+      <div class="hud-stat"><span>Solar now</span><strong data-role="g-pv" data-live>—</strong></div>
+      <div class="hud-stat"><span>Local time</span><strong data-role="g-time">—</strong></div>
+    </div>
+  </div>
+
+  <div class="garage__dial">
+    {{ dial('garage-dial') }}
+    <ul class="dial-legend">
+      <li data-tone="sun"><span class="dot"></span>Solar window</li>
+      <li data-tone="night"><span class="dot"></span>Off-peak</li>
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<section class="card solar-strip" aria-labelledby="solar-title">
+  <div class="card__head">
+    <div>
+      <h2 class="card__title" id="solar-title">Live solar</h2>
+      <p class="card__sub" id="solar-sub">Waiting for the Solar Monitor…</p>
+    </div>
+    <div class="row">
+      <span class="badge" id="solar-badge" data-tone="idle">Connecting</span>
+      <a class="btn btn--sm" href="{{ settings.solar_link }}" target="_blank" rel="noopener">Open Solar Monitor{{ icon('external') }}</a>
+    </div>
+  </div>
+  <div class="solar-strip__grid">
+    <div class="solar-stat tilt" style="--tone: var(--s-pv)">
+      <span class="kpi__icon">{{ icon('sun') }}</span>
+      <div><div class="solar-stat__label">Solar</div><div class="solar-stat__value" id="s-pv" data-live>—</div></div>
+    </div>
+    <div class="solar-stat tilt" style="--tone: var(--s-load)">
+      <span class="kpi__icon">{{ icon('home') }}</span>
+      <div><div class="solar-stat__label">Consumption</div><div class="solar-stat__value" id="s-load" data-live>—</div></div>
+    </div>
+    <div class="solar-stat tilt" style="--tone: var(--s-grid)">
+      <span class="kpi__icon">{{ icon('bolt') }}</span>
+      <div><div class="solar-stat__label" id="s-grid-label">Grid</div><div class="solar-stat__value" id="s-grid" data-live>—</div></div>
+    </div>
+    <div class="solar-stat tilt" style="--tone: var(--s-bat)">
+      <span class="kpi__icon">{{ icon('battery') }}</span>
+      <div><div class="solar-stat__label">Battery</div><div class="solar-stat__value" id="s-soc" data-live>—</div></div>
+    </div>
+  </div>
+</section>
+
+{% if devices %}
+<section class="grid grid--cards device-grid" id="device-grid" aria-label="Devices">
+  {% for d in devices %}
+  <article class="card device-card tilt" data-tilt="4" data-device="{{ d.id }}" data-state="unknown">
+    <div class="device-card__head">
+      <span class="device-card__icon">{{ icon('car' if loop.first else 'plug') }}</span>
+      <div class="device-card__title">
+        <a class="device-card__name" href="/devices/{{ d.id }}">{{ d.name }}</a>
+        <div class="device-card__sub">{{ d.ip }} · DP {{ d.dp }}</div>
+      </div>
+      <span class="badge" data-role="link" data-tone="idle">Checking</span>
+    </div>
+
+    <div class="device-card__state">
+      <span class="device-card__value" data-role="state"><span class="skeleton"></span></span>
+      <span class="device-card__meta" data-role="meta"></span>
+    </div>
+
+    <div class="device-card__controls">
+      <div class="power-toggle" role="group" aria-label="Power for {{ d.name }}">
+        <button type="button" data-on="true" disabled>{{ icon('power') }}On</button>
+        <button type="button" data-on="false" disabled>Off</button>
+      </div>
+      <span class="badge" data-role="auto" data-tone="idle">Automation</span>
+    </div>
+
+    <div class="device-card__modes">
+      <span class="badge badge--plain" data-role="mode-solar" data-tone="idle">{{ icon('sun') }}Solar</span>
+      <span class="badge badge--plain" data-role="mode-offpeak" data-tone="idle">{{ icon('moon') }}Off-peak</span>
+    </div>
+
+    <p class="device-card__reason" data-role="reason">&nbsp;</p>
+
+    <a class="device-card__more" href="/devices/{{ d.id }}">Schedule &amp; activity{{ icon('chevron') }}</a>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+{% include "partials/no_devices.html" %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/devices.js"></script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{# The 3D charging bay: car on a lit floor, wall charger, cable and energy.
+   State comes from data-state / data-mode on the nearest [data-garage]. #}
+{% macro stage(view='front') -%}
+<div class="stage" data-view="{{ view }}" aria-hidden="true">
+  <div class="stage__world">
+    <div class="stage__floor"><div class="stage__grid"></div></div>
+    <div class="stage__pool"></div>
+    <div class="charger">
+      <div class="charger__body">
+        <span class="charger__face charger__face--front">
+          <span class="charger__screen"><span class="charger__bolt"></span></span>
+          <span class="charger__led"></span>
+        </span>
+        <span class="charger__face charger__face--side"></span>
+        <span class="charger__face charger__face--top"></span>
+      </div>
+    </div>
+    {# The charge port is on the far side in both photos, so the cable runs
+       behind the body and disappears under it. #}
+    <svg class="cable" viewBox="0 0 1000 520" preserveAspectRatio="none">
+      {% if view == 'front' %}
+      <path class="cable__wire" d="M86 326 C 92 470, 250 486, 330 392 S 372 290, 384 262"/>
+      <path class="cable__flow" d="M86 326 C 92 470, 250 486, 330 392 S 372 290, 384 262"/>
+      {% else %}
+      <path class="cable__wire" d="M86 326 C 92 480, 200 492, 262 404 S 296 292, 304 262"/>
+      <path class="cable__flow" d="M86 326 C 92 480, 200 492, 262 404 S 296 292, 304 262"/>
+      {% endif %}
+    </svg>
+    <div class="car">
+      <img class="car__img" src="/static/img/lynkco-02-{{ view }}.webp" alt="" width="1800" height="{{ 1218 if view == 'front' else 1066 }}" decoding="async" fetchpriority="high">
+      <img class="car__mirror" src="/static/img/lynkco-02-{{ view }}.webp" alt="" width="1800" height="{{ 1218 if view == 'front' else 1066 }}" decoding="async">
+      <span class="car__shadow"></span>
+      <span class="car__glint"></span>
+    </div>
+    <div class="sparks">{% for i in range(14) %}<i style="--i:{{ i }}"></i>{% endfor %}</div>
+  </div>
+</div>
+{%- endmacro %}
+
+{# 24-hour dial: solar and off-peak windows as arcs, a needle for "now". #}
+{% macro dial(id) -%}
+<figure class="dial" id="{{ id }}">
+  <svg viewBox="0 0 220 220" role="img" aria-label="24-hour automation schedule">
+    <defs>
+      <linearGradient id="{{ id }}-sun" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--brand-1)"/><stop offset="1" stop-color="var(--brand-2)"/>
+      </linearGradient>
+      <linearGradient id="{{ id }}-night" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--night)"/><stop offset="1" stop-color="var(--accent-2)"/>
+      </linearGradient>
+    </defs>
+    <circle class="dial__face" cx="110" cy="110" r="96"/>
+    <circle class="dial__track" cx="110" cy="110" r="84"/>
+    <g class="dial__ticks"></g>
+    <path class="dial__arc dial__arc--solar" stroke="url(#{{ id }}-sun)"/>
+    <path class="dial__arc dial__arc--offpeak" stroke="url(#{{ id }}-night)"/>
+    <g class="dial__hand"><line x1="110" y1="12" x2="110" y2="40"/><circle cx="110" cy="26" r="5.5"/></g>
+  </svg>
+  <figcaption class="dial__center">
+    <strong class="dial__time" data-role="dial-time">--:--</strong>
+    <span class="dial__zone" data-role="dial-zone"></span>
+    <span class="dial__next" data-role="dial-next"></span>
+  </figcaption>
+</figure>
+{%- endmacro %}

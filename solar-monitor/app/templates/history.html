@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>History</h1>
+    <p>Samples are stored on every poll and kept for {{ settings.retention_days }} days.</p>
+  </div>
+  <div class="toolbar">
+    <select id="h-device" aria-label="Device" {% if devices|length < 2 %}hidden{% endif %} style="width:auto">
+      {% for register_no in devices %}<option value="{{ register_no }}">{{ register_no }}</option>{% endfor %}
+    </select>
+    <div class="segmented" role="group" aria-label="Range" id="h-range">
+      <button type="button" data-hours="24" aria-pressed="false">24h</button>
+      <button type="button" data-hours="72" aria-pressed="false">3d</button>
+      <button type="button" data-hours="168" aria-pressed="true">7d</button>
+      <button type="button" data-hours="720" aria-pressed="false">30d</button>
+      <button type="button" data-hours="2160" aria-pressed="false">90d</button>
+    </div>
+  </div>
+</div>
+
+<div class="stack">
+  <section class="grid grid--kpi" aria-label="Totals for the selected range">
+    <article class="card kpi kpi--pv">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('sun') }}</span><span class="kpi__label">Produced</span></div>
+      <div class="kpi__value" id="s-pv"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="s-pv-meta">&nbsp;</div>
+    </article>
+    <article class="card kpi kpi--load">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('home') }}</span><span class="kpi__label">Consumed</span></div>
+      <div class="kpi__value" id="s-load"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="s-load-meta">&nbsp;</div>
+    </article>
+    <article class="card kpi kpi--grid">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('bolt') }}</span><span class="kpi__label">Imported</span></div>
+      <div class="kpi__value" id="s-import"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="s-import-meta">&nbsp;</div>
+    </article>
+    <article class="card kpi kpi--bat">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('external') }}</span><span class="kpi__label">Exported</span></div>
+      <div class="kpi__value" id="s-export"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="s-export-meta">&nbsp;</div>
+    </article>
+  </section>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Energy by day</h2>
+        <p class="card__sub">Hover a column for that day's breakdown.</p>
+      </div>
+      <div class="legend" id="hist-legend"></div>
+    </div>
+    <div class="chart" id="hist-daily"></div>
+  </section>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Battery state of charge</h2>
+        <p class="card__sub">Remaining capacity over the selected range.</p>
+      </div>
+      <div class="legend" id="soc-legend"></div>
+    </div>
+    <div class="chart" id="soc-chart"></div>
+  </section>
+
+  <section class="card card--flush">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Daily energy</h2>
+        <p class="card__sub">The chart above as a table, in kWh.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col" class="num"><span class="table-key" style="background:var(--s-pv)"></span>Solar</th>
+            <th scope="col" class="num"><span class="table-key" style="background:var(--s-load)"></span>Consumed</th>
+            <th scope="col" class="num"><span class="table-key" style="background:var(--s-grid)"></span>Imported</th>
+            <th scope="col" class="num"><span class="table-key" style="background:var(--s-bat)"></span>Exported</th>
+            <th scope="col" class="num">Self-sufficiency</th>
+            {% if settings.energy_price %}<th scope="col" class="num">Saved</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="daily-table"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="daily-empty" hidden>{{ icon('chart') }}No daily totals yet.</div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/charts.js"></script>
+<script>
+  window.ENERGY_PRICE = {{ settings.energy_price or 0 }};
+  window.CURRENCY = {{ settings.currency|tojson }};
+</script>
+<script src="/static/js/history.js"></script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% from "partials/macros.html" import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#050813" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#eceff6" media="(prefers-color-scheme: light)">
+  <title>{% block title %}{% endblock %} · IoT Control</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230f9f8f%27/%3E%3Cpath d=%27M16 7v9%27 stroke=%27white%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M21.5 10.5a8 8 0 1 1-11 0%27 fill=%27none%27 stroke=%27white%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/control.css">
+  <script>
+    // Apply the saved theme before first paint so there is no flash.
+    try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  </script>
+</head>
+<body>
+  {% include "partials/icons.html" %}
+  <a class="skip-link" href="#content">Skip to content</a>
+
+  <div class="shell" data-nav="closed">
+    <aside class="sidebar" id="sidebar" aria-label="Main">
+      <a class="brand" href="/">
+        <span class="brand__mark brand__mark--iot">{{ icon('power') }}</span>
+        <span>
+          <span class="brand__name">IoT Control</span>
+          <span class="brand__sub">Device automation</span>
+        </span>
+      </a>
+
+      <nav class="nav" aria-label="Pages">
+        <a class="nav__link" href="/" {% if active == 'devices' %}aria-current="page"{% endif %}>
+          {{ icon('server') }}<span>Devices</span>
+        </a>
+        <a class="nav__link" href="/activity" {% if active == 'activity' %}aria-current="page"{% endif %}>
+          {{ icon('activity') }}<span>Activity</span>
+        </a>
+        <a class="nav__link" href="/system" {% if active == 'system' %}aria-current="page"{% endif %}>
+          {{ icon('sliders') }}<span>System</span>
+        </a>
+
+        {% if devices %}
+        <div class="nav__label">Devices</div>
+        {% for d in devices %}
+        <a class="nav__link" href="/devices/{{ d.id }}" {% if active == d.id %}aria-current="page"{% endif %}>
+          {{ icon('plug') }}<span>{{ d.name }}</span>
+          <span class="dot nav__dot" data-device-dot="{{ d.id }}" data-tone="idle"></span>
+        </a>
+        {% endfor %}
+        {% endif %}
+
+        <div class="nav__label">Links</div>
+        <a class="nav__link" href="{{ settings.solar_link }}" target="_blank" rel="noopener">
+          {{ icon('sun') }}<span>Solar Monitor</span>{{ icon('external', 'nav__ext') }}
+        </a>
+        <a class="nav__link" href="/docs" target="_blank" rel="noopener">
+          {{ icon('code') }}<span>API reference</span>{{ icon('external', 'nav__ext') }}
+        </a>
+      </nav>
+
+      <div class="sidebar__foot">
+        <div class="sidebar__status" title="Solar Monitor feed">
+          <span class="dot" id="feed-dot" data-tone="idle"></span>
+          <div>
+            <strong id="feed-label">Connecting…</strong>
+            <span id="feed-detail">Solar feed</span>
+          </div>
+        </div>
+        <div class="sidebar__row">
+          <span class="sidebar__version">v{{ version }}</span>
+          <button type="button" class="btn btn--ghost btn--sm btn--icon" data-action="theme" title="Toggle theme" aria-label="Toggle light and dark theme">{{ icon('moon') }}</button>
+        </div>
+      </div>
+    </aside>
+    <div class="scrim" data-action="nav"></div>
+
+    <div class="main">
+      <header class="mobilebar">
+        <button type="button" class="btn btn--ghost btn--icon" data-action="nav" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">{{ icon('menu') }}</button>
+        <a class="brand" href="/"><span class="brand__mark brand__mark--iot">{{ icon('power') }}</span><span class="brand__name">IoT Control</span></a>
+        <button type="button" class="btn btn--ghost btn--icon" data-action="theme" aria-label="Toggle light and dark theme">{{ icon('moon') }}</button>
+      </header>
+
+      <main class="content" id="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <script src="/static/js/core.js"></script>
+  <script src="/static/js/fx.js"></script>
+  <script src="/static/js/shell.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

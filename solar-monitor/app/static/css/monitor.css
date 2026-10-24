@@ -1,0 +1,307 @@
+/* Solar Monitor — charts, energy flow and page-specific pieces.
+   Built on base.css; tokens and components come from there. */
+
+/* --- KPI extras -------------------------------------------------------------- */
+.kpi--pv   { --tone: var(--s-pv); }
+.kpi--load { --tone: var(--s-load); }
+.kpi--grid { --tone: var(--s-grid); }
+.kpi--bat  { --tone: var(--s-bat); }
+.kpi__spark { height: 44px; margin: 0.4rem -0.25rem -0.25rem; filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--tone) 35%, transparent)); }
+.kpi__spark svg { display: block; width: 100%; height: 100%; }
+.kpi .meter { margin-top: 0.55rem; }
+.meter__fill[data-level="low"] { background: var(--warn); }
+.meter__fill[data-level="critical"] { background: var(--fault); }
+
+/* --- Overview header extras ------------------------------------------------- */
+.clock { text-align: right; line-height: 1.2; }
+.clock__time { display: block; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.clock__date { font-size: 12px; color: var(--text-3); }
+@media (max-width: 720px) { .clock { display: none; } }
+
+/* --- Energy flow: a 3D scene (flow.js) --------------------------------------- */
+@property --iso-tilt { syntax: "<angle>"; inherits: true; initial-value: 55deg; }
+@property --iso-spin { syntax: "<angle>"; inherits: true; initial-value: -26deg; }
+@property --lean-x { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --lean-z { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+
+.iso {
+  position: relative; width: 100%; aspect-ratio: 1.4; min-height: 360px;
+  overflow: hidden; border-radius: var(--radius);
+  perspective: 1500px; perspective-origin: 50% 10%;
+  background: radial-gradient(80% 70% at 50% 55%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%);
+}
+.iso__viewport { position: absolute; inset: 0; transform-style: preserve-3d; }
+.iso__world {
+  /* Centred absolutely: a grid track would grow with the 420px world on
+     narrow cards and push it off to one side. */
+  position: absolute; left: 50%; top: 50%; width: var(--size); height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  transform-style: preserve-3d;
+  transform: scale(var(--fit, 1)) translateY(12%)
+             rotateX(calc(var(--iso-tilt) + var(--lean-x)))
+             rotateZ(calc(var(--iso-spin) + var(--lean-z)));
+  transition: --lean-x 0.8s var(--ease-out), --lean-z 0.8s var(--ease-out);
+  animation: iso-sway 16s ease-in-out infinite alternate;
+}
+@keyframes iso-sway { from { --iso-spin: -34deg; } to { --iso-spin: -16deg; } }
+
+/* Counter-rotation that turns any child of the floor back to face the viewer. */
+.iso__label, .iso__plate {
+  transform-origin: 0 0;
+  --face: rotateZ(calc(-1 * (var(--iso-spin) + var(--lean-z)))) rotateX(calc(-1 * (var(--iso-tilt) + var(--lean-x))));
+}
+
+.iso__floor {
+  position: absolute; inset: -14%; border-radius: 50%;
+  background:
+    radial-gradient(closest-side, color-mix(in oklab, var(--accent) 20%, transparent), transparent),
+    repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 30px);
+  -webkit-mask: radial-gradient(closest-side, #000 55%, transparent);
+          mask: radial-gradient(closest-side, #000 55%, transparent);
+}
+.iso__rings {
+  position: absolute; inset: 18%; border-radius: 50%;
+  border: 1px dashed color-mix(in oklab, var(--accent) 35%, transparent);
+  box-shadow: 0 0 0 40px color-mix(in oklab, var(--accent) 3%, transparent);
+  animation: spin 60s linear infinite;
+}
+.iso__links { position: absolute; inset: 0; transform: translateZ(1px); }
+.iso__svg { width: 100%; height: 100%; overflow: visible; }
+.iso__track { fill: none; stroke: currentColor; stroke-opacity: 0.12; stroke-linecap: round; }
+.iso__beam { fill: none; stroke: currentColor; stroke-opacity: 0.55; stroke-linecap: round; }
+.iso__dash {
+  fill: none; stroke: #fff; stroke-opacity: 0.8; stroke-linecap: round;
+  stroke-dasharray: 1 12; animation: flow-dash var(--flow-dur, 1.5s) linear infinite;
+}
+@keyframes flow-dash { to { stroke-dashoffset: -13; } }
+.iso__packet { fill: #fff; filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px currentColor); }
+
+.iso__nodes { position: absolute; inset: 0; transform-style: preserve-3d; }
+.iso__node { position: absolute; left: var(--x); top: var(--y); transform-style: preserve-3d; }
+.iso__halo {
+  position: absolute; left: -82px; top: -82px; width: 164px; height: 164px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 42%, transparent), transparent);
+  opacity: 0.35; transform: translateZ(0.5px);
+}
+.iso__node.is-active .iso__halo { opacity: calc(0.45 + 0.55 * var(--power, 1)); animation: halo 3.2s ease-in-out infinite; }
+@keyframes halo { 50% { opacity: 0.45; scale: 0.88; } }
+
+/* --- Models (built by flow.js from flat faces) ------------------------------ */
+.iso__model { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.m3 { position: absolute; transform-style: preserve-3d; }
+.m3__f { position: absolute; display: block; backface-visibility: visible; overflow: hidden; }
+.m3__f > i { position: absolute; display: block; }
+
+/* Shading: light from the upper left, so top > front > right > the rest. */
+.m3--wall .m3__f, .m3--house .m3__f { background: #e9edf5; }
+.m3--wall .m3__f--front, .m3--house .m3__f--front { background: linear-gradient(#f4f6fb, #d5dbe7); }
+.m3--wall .m3__f--right, .m3--house .m3__f--right { background: linear-gradient(90deg, #aab3c5, #c3cad8); }
+.m3--wall .m3__f--left, .m3--wall .m3__f--back,
+.m3--house .m3__f--left, .m3--house .m3__f--back { background: #9aa3b6; }
+
+/* Solar: a roof clad in photovoltaic panels. */
+.m3--panels .m3__f--slope {
+  background: linear-gradient(160deg, #24407a, #0f1d3d 60%, #0a1430);
+  border: 2px solid #c9d2e3; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35) inset;
+}
+.m3--panels .m3__f--slope-back { filter: brightness(0.7); }
+.m3__cells {
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgb(190 210 255 / 0.35) 0 1px, transparent 1px 13px),
+    repeating-linear-gradient(0deg, rgb(190 210 255 / 0.35) 0 1px, transparent 1px 9px);
+}
+.m3__glint {
+  inset: -40% -60%;
+  background: linear-gradient(110deg, transparent 40%, rgb(255 236 180 / 0.75) 50%, transparent 60%);
+  translate: -70% 0; opacity: 0;
+}
+.iso__node--pv.is-active .m3__glint { opacity: 1; animation: panel-glint 4.5s ease-in-out infinite; }
+.iso__node--pv.is-active .m3--panels .m3__f--slope-front {
+  box-shadow: 0 0 calc(10px + 26px * var(--power, 0)) color-mix(in srgb, var(--s-pv) 70%, transparent), 0 0 0 1px rgb(0 0 0 / 0.35) inset;
+}
+@keyframes panel-glint { 0% { translate: -70% 0; } 55%, 100% { translate: 70% 0; } }
+.m3--panels .m3__f--gable { background: #b9c1d0; }
+
+/* Home: walls, a tiled roof, windows that light up with the load. */
+.m3--roof .m3__f--slope {
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 6px),
+    linear-gradient(#b4553a, #8e3a27);
+}
+.m3--roof .m3__f--slope-back { filter: brightness(0.7); }
+.m3--roof .m3__f--gable { background: #c9cfdb; }
+.m3--chimney .m3__f { background: #8e3a27; }
+.m3--chimney .m3__f--front { background: #a9472f; }
+.m3--chimney .m3__f--top { background: #3a1a12; }
+.m3__win {
+  bottom: 38%; width: 22%; height: 34%; border-radius: 2px;
+  background: #2b3550; box-shadow: 0 0 0 2px #fff inset;
+  transition: background 0.6s, box-shadow 0.6s;
+}
+.m3__f--front .m3__win:first-child { left: 9%; }
+.m3__f--front .m3__win:last-child { right: 9%; }
+.m3__door {
+  left: 40%; bottom: 0; width: 20%; height: 58%; border-radius: 3px 3px 0 0;
+  background: linear-gradient(#5b3a2a, #3f281d);
+}
+.m3__win--side { left: 30%; top: 30%; width: 40%; height: 40%; bottom: auto; }
+.iso__node--home.is-active .m3__win {
+  background: color-mix(in srgb, #ffd27a calc(45% + 55% * var(--power, 0)), #2b3550);
+  box-shadow: 0 0 0 2px #fff inset, 0 0 calc(6px + 14px * var(--power, 0)) #ffc457;
+}
+
+/* Battery: two storage cabinets on a plinth, with a state-of-charge gauge. */
+.m3--cabinet .m3__f { background: #d8dee9; }
+.m3--cabinet .m3__f--top { background: #f2f5fa; }
+.m3--cabinet .m3__f--front { background: linear-gradient(#f5f7fb, #cfd6e3); }
+.m3--cabinet .m3__f--right { background: linear-gradient(90deg, #9aa4b8, #b7bfce); }
+.m3--cabinet .m3__f--left, .m3--cabinet .m3__f--back { background: #8d97ab; }
+.m3--plinth .m3__f { background: #4a5468; }
+.m3--plinth .m3__f--top { background: #5d6880; }
+.m3__vents {
+  left: 18%; right: 18%; top: 8%; height: 16%;
+  background: repeating-linear-gradient(0deg, #8f99ad 0 1px, transparent 1px 3px);
+}
+.m3__gauge {
+  left: 30%; right: 30%; top: 30%; bottom: 14%; border-radius: 3px;
+  background: #1a2233; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4) inset;
+  overflow: hidden;
+}
+.m3__gauge b {
+  position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--soc, 0) * 100%);
+  background: linear-gradient(to top, color-mix(in srgb, var(--s-bat) 70%, #000), var(--s-bat));
+  box-shadow: 0 0 8px var(--s-bat);
+  transition: height 1.2s var(--ease-out);
+}
+.iso__node--battery[data-level="low"] .m3__gauge b { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.iso__node--battery[data-level="critical"] .m3__gauge b { background: var(--fault); box-shadow: 0 0 8px var(--fault); }
+.iso__node--battery[data-flow="charge"] .m3__gauge b { animation: gauge-charge 1.6s ease-in-out infinite; }
+@keyframes gauge-charge { 50% { filter: brightness(1.5); } }
+.m3__led {
+  left: 50%; top: 4%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+  background: var(--idle);
+}
+.iso__node--battery.is-active .m3__led { background: var(--s-bat); box-shadow: 0 0 6px 1px var(--s-bat); animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+
+/* Grid: a lattice pylon drawn on two crossed vertical planes. */
+.m3__plane {
+  position: absolute; left: -75px; top: -128px; width: 150px; height: 128px;
+  transform-origin: 50% 100%; transform: rotateX(-90deg);
+  color: color-mix(in srgb, var(--s-grid) 35%, #c9d0de);
+}
+.m3__plane--cross { transform: rotateZ(90deg) rotateX(-90deg); }
+.m3__plane svg { width: 100%; height: 100%; overflow: visible; }
+.m3__steel { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.m3__wire { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.7; }
+.iso__node--grid.is-active .m3__plane { color: color-mix(in srgb, var(--s-grid) 55%, #e6e9f2); filter: drop-shadow(0 0 4px var(--s-grid)); }
+.iso__node--grid.is-active .m3__wire { stroke-dasharray: 3 5; animation: flow-dash 0.9s linear infinite; opacity: 1; }
+.iso__node--grid[data-flow="import"] .m3__wire { animation-direction: reverse; }
+
+/* Night / idle: models dim rather than vanish. */
+.iso__node:not(.is-active) .iso__model { filter: saturate(0.6) brightness(0.85); }
+
+/* Billboards: anchored above each model, turned to face the viewer. */
+.iso__label {
+  position: absolute; left: 0; top: 0;
+  display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 0.35rem;
+  padding: 0.32rem 0.6rem 0.36rem; border-radius: 10px; white-space: nowrap;
+  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--border));
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.6), 0 0 18px -8px var(--c);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transform: translateZ(calc(var(--h) + 8px)) var(--face) translate(var(--lx, -50%), -100%);
+  transition: transform 0.9s var(--ease-out);
+}
+/* The battery's label leans left, clear of the track coming in from the panels. */
+.iso__node--battery .iso__label { --lx: -66%; }
+.iso__icon { display: grid; place-items: center; color: var(--c); }
+.iso__icon .i { width: 12px; height: 12px; }
+.iso__name { font-size: 9px; font-weight: 750; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-3); }
+.iso__value { grid-column: 1 / -1; font-size: 14.5px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.iso__value small { font-size: 10px; font-weight: 650; color: var(--text-3); margin-left: 0.12rem; }
+.iso__sub { grid-column: 1 / -1; font-size: 9.5px; color: var(--text-3); }
+.iso__plate {
+  position: absolute; left: var(--x); top: var(--y);
+  padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
+  font-size: 11px; font-weight: 750; font-variant-numeric: tabular-nums;
+  color: var(--text); background: color-mix(in srgb, var(--surface-solid) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 50%, transparent);
+  box-shadow: 0 0 14px -6px var(--c);
+  transform: translateZ(8px) var(--face) translate(-50%, -50%);
+}
+.iso__empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); }
+@media (max-width: 600px) { .iso { aspect-ratio: 1; min-height: 300px; } }
+@media (prefers-reduced-motion: reduce) { .iso__world { animation: none; } }
+
+/* --- Charts -------------------------------------------------------------------- */
+.chart { position: relative; width: 100%; }
+.legend + .chart { margin-top: 0.75rem; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart__grid line { stroke: var(--grid-line); stroke-width: 1; shape-rendering: crispEdges; }
+.chart__tick { font-size: 11px; fill: var(--text-3); font-variant-numeric: tabular-nums; }
+.chart__line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.18)); }
+.chart__area { stroke: none; opacity: 0.16; }
+.chart__crosshair { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.chart__dot { stroke: var(--surface); stroke-width: 2; pointer-events: none; }
+.chart__empty {
+  display: grid; place-items: center; min-height: 180px; padding: 1rem;
+  color: var(--text-3); font-size: 13px; text-align: center;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+}
+.chart-tooltip {
+  position: absolute; z-index: 5; pointer-events: none; min-width: 160px;
+  padding: 0.6rem 0.75rem; border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-solid) 86%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 12.5px; opacity: 0; transition: opacity 0.12s;
+}
+.chart-tooltip[data-visible="true"] { opacity: 1; }
+.chart-tooltip__title { font-weight: 600; margin-bottom: 0.3rem; color: var(--text); }
+.chart-tooltip__row { display: flex; align-items: center; gap: 0.45rem; padding: 0.1rem 0; }
+.chart-tooltip__key { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.chart-tooltip__label { color: var(--text-2); margin-right: auto; }
+.chart-tooltip__value { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; }
+.legend__item {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  height: 28px; padding: 0 0.6rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); font-size: 12.5px; cursor: default;
+}
+button.legend__item { cursor: pointer; }
+button.legend__item:hover { border-color: var(--border-strong); }
+.legend__item[aria-pressed="false"] { opacity: 0.45; }
+.legend__key { width: 12px; height: 3px; border-radius: 2px; flex: none; }
+.legend__key--block { width: 9px; height: 9px; border-radius: 3px; }
+.legend__value { font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* --- Settings ------------------------------------------------------------------- */
+.endpoint { display: flex; align-items: center; gap: 0.6rem; }
+.endpoint code { white-space: nowrap; word-break: normal; }
+.method {
+  display: inline-block; min-width: 46px; padding: 0.1rem 0.4rem; border-radius: 6px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; text-align: center;
+  color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.method--post { color: var(--info); background: color-mix(in srgb, var(--info) 12%, transparent); }
+.method--put, .method--patch { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.method--delete { color: var(--fault); background: color-mix(in srgb, var(--fault) 12%, transparent); }
+pre.snippet {
+  margin: 0; padding: 0.9rem 1rem; overflow-x: auto; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--text-2);
+}
+.device-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem 2rem; }
+
+/* --- Alerts ---------------------------------------------------------------------- */
+.rule-row[data-enabled="0"] td:not(:last-child) { opacity: 0.5; }
+.rule-name { font-weight: 600; }
+
+@media (forced-colors: active) {
+  .chart__line { stroke: CanvasText; }
+}

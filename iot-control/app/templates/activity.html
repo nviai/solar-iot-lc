@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Activity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Activity</h1>
+    <p>Every relay movement across all devices — manual presses and automation alike,
+       with the reason recorded at the time.</p>
+  </div>
+  {% if devices|length > 1 %}
+  <div class="toolbar">
+    <div class="field">
+      <label for="device-filter" class="visually-hidden">Device</label>
+      <select id="device-filter">
+        <option value="">All devices</option>
+        {% for d in devices %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<section class="card" aria-label="Activity log">
+  <div class="timeline" id="events"></div>
+  <div class="empty" id="events-empty" hidden>{{ icon('activity') }}Nothing has moved yet.</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/activity.js"></script>
+{% endblock %}

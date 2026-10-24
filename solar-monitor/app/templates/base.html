@@ -1,0 +1,92 @@
+{% from "partials/macros.html" import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#050813" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#eceff6" media="(prefers-color-scheme: light)">
+  <title>{% block title %}{% endblock %} · Solar Monitor</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%23f26b1d%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%276%27 fill=%27white%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/monitor.css">
+  <script>
+    // Apply the saved theme before first paint so there is no flash.
+    try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  </script>
+</head>
+<body>
+  {% include "partials/icons.html" %}
+  <a class="skip-link" href="#content">Skip to content</a>
+
+  <div class="shell" data-nav="closed">
+    <aside class="sidebar" id="sidebar" aria-label="Main">
+      <a class="brand" href="/">
+        <span class="brand__mark">{{ icon('sun') }}</span>
+        <span>
+          <span class="brand__name">Solar Monitor</span>
+          <span class="brand__sub">SolaX telemetry</span>
+        </span>
+      </a>
+
+      <nav class="nav" aria-label="Pages">
+        {% set pages = [
+          ('overview', '/', 'Overview', 'grid'),
+          ('history', '/history', 'History', 'chart'),
+          ('alerts', '/alerts', 'Alerts', 'bell'),
+          ('settings', '/settings', 'Settings', 'sliders'),
+        ] %}
+        {% for key, href, label, ico in pages %}
+        <a class="nav__link" href="{{ href }}" {% if active == key %}aria-current="page"{% endif %}>
+          {{ icon(ico) }}<span>{{ label }}</span>
+          {% if key == 'alerts' %}<span class="nav__badge" id="alert-badge" hidden>0</span>{% endif %}
+        </a>
+        {% endfor %}
+
+        <div class="nav__label">Developers</div>
+        <a class="nav__link" href="/docs" target="_blank" rel="noopener">
+          {{ icon('code') }}<span>API reference</span>{{ icon('external', 'nav__ext') }}
+        </a>
+      </nav>
+
+      <div class="sidebar__foot">
+        <div class="sidebar__status" id="poll-state" title="Poller status">
+          <span class="dot" id="poll-dot" data-tone="idle"></span>
+          <div>
+            <strong id="poll-label">Connecting…</strong>
+            <span id="poll-detail">{% if settings.demo_mode %}Demo data{% else %}SolaX Cloud{% endif %}</span>
+          </div>
+        </div>
+        <div class="sidebar__row">
+          <span class="sidebar__version">v{{ version }}{% if settings.demo_mode %} · demo{% endif %}</span>
+          <span class="row" style="gap:.25rem">
+            <button type="button" class="btn btn--ghost btn--sm btn--icon" id="refresh-btn" title="Poll SolaX now" aria-label="Poll SolaX now">{{ icon('refresh') }}</button>
+            <button type="button" class="btn btn--ghost btn--sm btn--icon" data-action="theme" title="Toggle theme" aria-label="Toggle light and dark theme">{{ icon('moon') }}</button>
+          </span>
+        </div>
+      </div>
+    </aside>
+    <div class="scrim" data-action="nav"></div>
+
+    <div class="main">
+      <header class="mobilebar">
+        <button type="button" class="btn btn--ghost btn--icon" data-action="nav" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">{{ icon('menu') }}</button>
+        <a class="brand" href="/"><span class="brand__mark">{{ icon('sun') }}</span><span class="brand__name">Solar Monitor</span></a>
+        <button type="button" class="btn btn--ghost btn--icon" data-action="theme" aria-label="Toggle light and dark theme">{{ icon('moon') }}</button>
+      </header>
+
+      <main class="content" id="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <script src="/static/js/core.js"></script>
+  <script src="/static/js/fx.js"></script>
+  <script src="/static/js/shell.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% from "partials/macros.html" import icon %}
+<div class="card">
+  <div class="empty">
+    {{ icon('plug') }}
+    <strong class="secondary">No devices configured</strong>
+    <span>{{ inventory_error or 'devices.json lists no devices.' }}</span>
+    <a class="btn btn--sm" href="/system" style="margin-top:.5rem">How to add a device</a>
+  </div>
+</div>

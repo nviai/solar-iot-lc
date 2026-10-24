@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Overview</h1>
+    <p id="overview-sub">Solar production, consumption and grid exchange in real time.</p>
+  </div>
+  <div class="toolbar">
+    <span class="badge" id="status-badge" data-tone="idle">—</span>
+    <select id="device-select" aria-label="Device" {% if devices|length < 2 %}hidden{% endif %} style="width:auto">
+      {% for register_no in devices %}<option value="{{ register_no }}">{{ register_no }}</option>{% endfor %}
+    </select>
+    <div class="clock" aria-hidden="true">
+      <span class="clock__time" id="clock-time">--:--</span>
+      <span class="clock__date" id="clock-date"></span>
+    </div>
+  </div>
+</div>
+
+<div class="stack">
+  {% if not settings.configured %}
+  <div class="callout" data-tone="warn">
+    {{ icon('alert') }}
+    <div>
+      <h3>Not connected to SolaX</h3>
+      <p>Copy <code>.env.example</code> to <code>.env</code>, fill in <code>SOLAX_CLIENT_ID</code>
+         and <code>SOLAX_CLIENT_SECRET</code> from your application on developer.solaxcloud.com,
+         then restart. Set <code>DEMO_MODE=true</code> to explore with synthetic data first.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="callout" data-tone="fault" id="device-error" hidden>
+    {{ icon('alert') }}
+    <div><h3>Could not read the device</h3><p id="device-error-msg"></p></div>
+  </div>
+
+  <section class="grid grid--kpi" aria-label="Current readings">
+    <article class="card kpi kpi--pv tilt">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('sun') }}</span><span class="kpi__label">Solar</span></div>
+      <div class="kpi__value" id="k-pv"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="k-pv-meta">&nbsp;</div>
+      <div class="kpi__spark" id="sp-pv"></div>
+    </article>
+    <article class="card kpi kpi--load tilt">
+      <div class="kpi__top"><span class="kpi__icon">{{ icon('home') }}</span><span class="kpi__label">Consumption</span></div>
+      <div class="kpi__value" id="k-load"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="k-load-meta">&nbsp;</div>
+      <div class="kpi__spark" id="sp-load"></div>
+    </article>
+    <article class="card kpi kpi--grid tilt">
+      <div class="kpi__top">
+        <span class="kpi__icon">{{ icon('bolt') }}</span><span class="kpi__label">Grid</span>
+        <span class="kpi__aside badge badge--plain" id="k-grid-dir" data-tone="idle">Idle</span>
+      </div>
+      <div class="kpi__value" id="k-grid"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="k-grid-meta">&nbsp;</div>
+      <div class="kpi__spark" id="sp-grid"></div>
+    </article>
+    <article class="card kpi kpi--bat tilt" id="kpi-battery">
+      <div class="kpi__top">
+        <span class="kpi__icon">{{ icon('battery') }}</span><span class="kpi__label">Battery</span>
+        <span class="kpi__aside badge badge--plain" id="k-bat-dir" data-tone="idle">Idle</span>
+      </div>
+      <div class="kpi__value" id="k-soc"><span class="skeleton"></span></div>
+      <div class="kpi__meta" id="k-bat-meta">&nbsp;</div>
+      <div class="meter"><div class="meter__fill" id="soc-fill" style="width:0%"></div></div>
+    </article>
+  </section>
+
+  <div class="grid grid--main-side">
+    <section class="card card--hero">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title">Energy flow</h2>
+          <p class="card__sub">Where power is moving right now — between the rooftop panels, the grid, the battery and the house.</p>
+        </div>
+        <span class="badge badge--plain" data-tone="info">3D · live</span>
+      </div>
+      <div id="flow-diagram"></div>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title">Today</h2>
+          <p class="card__sub" id="today-sub">Counters reported by the inverter.</p>
+        </div>
+      </div>
+      <dl class="kv" id="today-kv">
+        <dt>Produced</dt><dd id="d-yield">—</dd>
+        <dt>Imported</dt><dd id="d-import">—</dd>
+        <dt>Exported</dt><dd id="d-export">—</dd>
+        <dt>Battery charged</dt><dd id="d-charged">—</dd>
+        <dt>Battery discharged</dt><dd id="d-discharged">—</dd>
+        <dt>Self-sufficiency now</dt><dd id="d-self">—</dd>
+        <dt>Inverter temperature</dt><dd id="d-temp">—</dd>
+      </dl>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card__head">
+      <div>
+        <h2 class="card__title">Power over time</h2>
+        <p class="card__sub">Grid is positive when exporting, negative when importing.</p>
+      </div>
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="Time range" id="range">
+          <button type="button" data-hours="6" aria-pressed="false">6h</button>
+          <button type="button" data-hours="24" aria-pressed="true">24h</button>
+          <button type="button" data-hours="72" aria-pressed="false">3d</button>
+          <button type="button" data-hours="168" aria-pressed="false">7d</button>
+        </div>
+        <button type="button" class="btn btn--sm btn--icon" id="toggle-table" aria-pressed="false"
+                title="Show as table" aria-label="Show as table">{{ icon('table') }}</button>
+      </div>
+    </div>
+    <div class="legend" id="power-legend"></div>
+    <div class="chart" id="power-chart"></div>
+    <div class="table-wrap table-wrap--scroll" id="power-table-wrap" hidden>
+      <table>
+        <caption class="visually-hidden">Power readings over time</caption>
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            <th scope="col" class="num">Solar</th>
+            <th scope="col" class="num">Consumption</th>
+            <th scope="col" class="num">Grid</th>
+            <th scope="col" class="num">Battery</th>
+          </tr>
+        </thead>
+        <tbody id="power-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card__head">
+        <div>
+          <h2 class="card__title">Energy by day</h2>
+          <p class="card__sub">Solar from the daily yield counter; consumption and grid integrated from samples.</p>
+        </div>
+        <div class="legend" id="daily-legend"></div>
+      </div>
+      <div class="chart" id="daily-chart"></div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/flow.js"></script>
+<script src="/static/js/overview.js"></script>
+{% endblock %}
